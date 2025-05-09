@@ -4,11 +4,12 @@ class Node:
     ACC = 1
     REJ = 0
 
-    def __init__(self, id, state=None, a=None, b=None):
+    def __init__(self, id, state=None, a=None, b=None, name=None):
         self.id = id
         self.state = state
         self.a = a
         self.b = b
+        self.name = name if name is not None else str(id)
 
     def __repr__(self):
         return f"Node(id={self.id}, state={self.state})"
@@ -17,7 +18,7 @@ class Node:
 def render_dfa(root, path="/tmp/dfa", view=True):
     dot = Digraph(name="DFA", format="png", engine="dot",
                   graph_attr={"rankdir": "LR"},
-                  node_attr={"fontname": "Monospace", "fixedsize": "true"},
+                  node_attr={"fontname": "Monospace"},
                   edge_attr={"fontname": "Monospace"})
 
     visited = set()
@@ -27,18 +28,21 @@ def render_dfa(root, path="/tmp/dfa", view=True):
             return
         visited.add(node.id)
 
-        id_str = str(node.id)
+        node_id = str(node.id)
+
         if node.state is None:
-            dot.node(id_str, shape="circle")
+            dot.node(node_id, label=node.name, shape="circle")
         elif node.state == Node.ACC:
-            dot.node(id_str, shape="circle", peripheries="2", style="filled", fillcolor="white", fontcolor="black")
+            dot.node(node_id, label=node.name, shape="circle", peripheries="2", style="filled", fillcolor="white", fontcolor="black")
+        elif node.state == Node.REJ:
+            dot.node(node_id, label=node.name, shape="circle", peripheries="2", style="filled", fillcolor="black", fontcolor="white")
         else:
-            dot.node(id_str, shape="circle", peripheries="2", style="filled", fillcolor="black", fontcolor="white")
+            assert False, "bad state"
 
         for sym in ("a", "b"):
             child = getattr(node, sym)
             if child:
-                dot.edge(id_str, str(child.id), label=sym, weight="2")
+                dot.edge(node_id, str(child.id), label=sym, weight="2")
                 add_state(child)
 
     add_state(root)
@@ -49,8 +53,7 @@ def dfa_to_list(root):
     all_nodes = {}
 
     def visit(node):
-        if node.id in all_nodes:
-            raise ValueError(f"Duplicate node ID: {node.id}")
+        assert node.id not in all_nodes, "dup id"
         all_nodes[node.id] = node
         if node.a:
             visit(node.a)
@@ -60,7 +63,6 @@ def dfa_to_list(root):
     visit(root)
 
     ids = sorted(all_nodes)
-    if ids != list(range(len(ids))):
-        raise ValueError(f"IDs must be unique and continuous from 0 to N-1. Found: {ids}")
+    assert ids == list(range(len(ids))), "bad id seq"
 
     return [all_nodes[i] for i in ids]

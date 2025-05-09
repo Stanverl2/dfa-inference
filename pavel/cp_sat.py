@@ -3,10 +3,11 @@ from collections import defaultdict
 from dfa import Node, render_dfa, dfa_to_list
 
 
-def solve_dfa_coloring_cp_sat(C, N, edges, dfa):
+def solve_dfa_coloring_cp_sat(C, dfa_list, conflict_edges):
     model = cp_model.CpModel()
+    N = len(dfa_list)
     color = [model.new_int_var(0, C - 1, f"color_{i}") for i in range(N)]
-    conflict_set = {(min(i, j), max(i, j)) for (i, j) in edges}
+    conflict_set = {(min(i, j), max(i, j)) for (i, j) in conflict_edges}
 
     for v, u in conflict_set:
         assert v != u, f"invalid edge {v} {u}"
@@ -17,8 +18,8 @@ def solve_dfa_coloring_cp_sat(C, N, edges, dfa):
             if (i, j) in conflict_set:
                 continue
 
-            node_i = dfa[i]
-            node_j = dfa[j]
+            node_i = dfa_list[i]
+            node_j = dfa_list[j]
 
             has_a = node_i.a is not None and node_j.a is not None
             has_b = node_i.b is not None and node_j.b is not None
@@ -46,16 +47,22 @@ def solve_dfa_coloring_cp_sat(C, N, edges, dfa):
     return None
 
 
-def rebuild_dfa_from_coloring(dfa, coloring):
+def rebuild_dfa_from_coloring(dfa_list, coloring):
     groups = defaultdict(list)
-    for node in dfa:
+    for node in dfa_list:
         groups[coloring[node.id]].append(node)
 
     new_nodes = {}
     for color, nodes in groups.items():
-        states = {n.state for n in nodes}
-        state = Node.ACC if Node.ACC in states else Node.REJ
-        new_nodes[color] = Node(id=color, state=state)
+        has_acc = any(n.state == Node.ACC for n in nodes)
+        has_rej = any(n.state == Node.REJ for n in nodes)
+        assert not (has_acc and has_rej), "conflict state"
+        state = Node.ACC if has_acc else Node.REJ if has_rej else None
+
+        names = sorted(n.name for n in nodes)
+        name = ",".join(names)
+
+        new_nodes[color] = Node(id=color, state=state, name=name)
 
     for color, nodes in groups.items():
         sample = nodes[0]
@@ -69,29 +76,30 @@ def rebuild_dfa_from_coloring(dfa, coloring):
     root_color = coloring[0]
     return new_nodes[root_color]
 
-dfa = Node(
-    id=0,
-    a=Node(
-        id=1,
-        state=Node.REJ,
-        a=Node(id=2, state=Node.ACC),
-        b=Node(id=3, state=Node.REJ)
-    ),
-    b=Node(id=4, state=Node.ACC)
-)
 
-render_dfa(dfa, path="/tmp/original_dfa", view=True)
+if __name__ == "__main__":
+    dfa = Node(
+        id=0,
+        a=Node(
+            id=1,
+            state=Node.REJ,
+            a=Node(id=2, state=Node.ACC),
+            b=Node(id=3, state=Node.REJ)
+        ),
+        b=Node(id=4, state=Node.ACC)
+    )
 
-dfa_apta = dfa_to_list(dfa)
-C = 2
-N = len(dfa_apta)
-edges = [(1, 4), (3, 4), (1, 2), (2, 3)]
+    render_dfa(dfa, path="/tmp/original_dfa", view=True)
 
-coloring = solve_dfa_coloring_cp_sat(C, N, edges, dfa_apta)
+    dfa_list = dfa_to_list(dfa)
+    C = 2
+    edges = [(1, 4), (3, 4), (1, 2), (2, 3)]
 
-if coloring is not None:
-    print("Coloring:", coloring)
-    minimized_dfa = rebuild_dfa_from_coloring(dfa_apta, coloring)
-    render_dfa(minimized_dfa, path="/tmp/minimized_dfa", view=True)
-else:
-    print("No solution found.")
+    coloring = solve_dfa_coloring_cp_sat(C, dfa_list, edges)
+
+    if coloring is not None:
+        print("Coloring:", coloring)
+        minimized_dfa = rebuild_dfa_from_coloring(dfa_list, coloring)
+        render_dfa(minimized_dfa, path="/tmp/minimized_dfa", view=True)
+    else:
+        print("No solution found.")
