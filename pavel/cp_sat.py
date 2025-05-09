@@ -2,15 +2,15 @@ from ortools.sat.python import cp_model
 from collections import defaultdict
 from dfa import Node, render_dfa, dfa_to_list
 
-
-def solve_dfa_coloring_cp_sat(C, dfa_list, conflict_edges):
+# Exact DFA Identification Using SAT Solvers
+# https://www.cs.cmu.edu/~mheule/publications/DFA_ICGI.pdf
+def solve_dfa_sat_paper(C, dfa_list, conflict_edges):
     model = cp_model.CpModel()
     N = len(dfa_list)
     color = [model.new_int_var(0, C - 1, f"color_{i}") for i in range(N)]
     conflict_set = {(min(i, j), max(i, j)) for (i, j) in conflict_edges}
 
     for v, u in conflict_set:
-        assert v != u, f"invalid edge {v} {u}"
         model.add(color[v] != color[u])
 
     for i in range(N):
@@ -45,6 +45,81 @@ def solve_dfa_coloring_cp_sat(C, dfa_list, conflict_edges):
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         return [solver.value(color[i]) for i in range(N)]
     return None
+
+
+def solve_dfa_sat_edge_first(C, dfa_list, conflict_edges):
+    model = cp_model.CpModel()
+    N = len(dfa_list)
+    conflict_set = {(min(i, j), max(i, j)) for (i, j) in conflict_edges}
+
+    eq = {}
+    for i in range(N):
+        for j in range(i + 1, N):
+            eq[i, j] = model.new_bool_var(f"eq_{i}_{j}")
+
+    for i, j in conflict_set:
+        model.add(eq[i, j] == 0)
+
+    for i in range(N):
+        for j in range(i + 1, N):
+            for k in range(j + 1, N):
+                model.add(eq[i, j] + eq[i, k] + eq[j, k] != 2)
+
+    for i in range(N):
+        for j in range(i + 1, N):
+            if (i, j) in conflict_set:
+                continue
+
+            node_i = dfa_list[i]
+            node_j = dfa_list[j]
+
+            has_a = node_i.a is not None and node_j.a is not None
+            has_b = node_i.b is not None and node_j.b is not None
+
+            if not (has_a or has_b):
+                continue
+
+            eq_ij = eq[i, j]
+
+            if has_a:
+                a_i = node_i.a.id
+                a_j = node_j.a.id
+                a1, a2 = sorted((a_i, a_j))
+                model.add_implication(eq_ij, eq[a1, a2])
+
+            if has_b:
+                b_i = node_i.b.id
+                b_j = node_j.b.id
+                b1, b2 = sorted((b_i, b_j))
+                model.add_implication(eq_ij, eq[b1, b2])
+
+    model.maximize(sum(eq[i, j] for i in range(N) for j in range(i + 1, N)))
+
+    solver = cp_model.CpSolver()
+    status = solver.solve(model)
+    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        parent = list(range(N))
+        def find(x):
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+        def union(x, y):
+            x_root = find(x)
+            y_root = find(y)
+            if x_root != y_root:
+                parent[y_root] = x_root
+
+        for i in range(N):
+            for j in range(i + 1, N):
+                if solver.value(eq[i, j]):
+                    union(i, j)
+
+        roots = {find(i) for i in range(N)}
+        root_to_color = {r: idx for idx, r in enumerate(sorted(roots))}
+        return [root_to_color[find(i)] for i in range(N)]
+
+    return None # TODO remove, it always succeed
 
 
 def rebuild_dfa_from_coloring(dfa_list, coloring):
@@ -93,9 +168,9 @@ if __name__ == "__main__":
 
     dfa_list = dfa_to_list(dfa)
     C = 2
-    edges = [(1, 4), (3, 4), (1, 2), (2, 3)]
+    edges = [(1, 4), (3, 4), (1, 2), (2, 3)] # TODO generate
 
-    coloring = solve_dfa_coloring_cp_sat(C, dfa_list, edges)
+    coloring = solve_dfa_sat_paper(C, dfa_list, edges)
 
     if coloring is not None:
         print("Coloring:", coloring)
