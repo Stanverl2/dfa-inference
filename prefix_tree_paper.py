@@ -1,0 +1,17 @@
+8
+1 "other"
+2 "accept"
+3 "other"
+4 "other"
+5 "accept"
+6 "reject"
+7 "reject"
+8 "accept"
+7
+1 2 "1"
+2 3 "0"
+3 4 "1"
+4 5 "1"
+3 6 "0"
+1 7 "0"
+7 8 "0"
