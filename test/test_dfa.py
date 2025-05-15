@@ -8,7 +8,8 @@ class TestDfaMethods(unittest.TestCase):
     def test_prefix_tree_word_not_from_alphabet(self):
         """
         Tests whether a warning is raised when a word is encountered with letters not in the
-        alphabet ({a,b}).
+        alphabet ({a,b}). The sets are loosely based on the language L = { w ∈ {a, b} | w ends with
+        "ab" }.
 
         :return: Assertion checking if a warning is raised.
         """
@@ -21,7 +22,7 @@ class TestDfaMethods(unittest.TestCase):
     def test_prefix_tree_word_in_both_sets(self):
         """
         Tests whether an error is raised when the positive set and the negative set contain the same
-        word.
+        word. The sets are loosely based on the language L = { w ∈ {a, b} | w ends with "ab" }.
 
         :return: Assertion checking if an error is raised.
         """

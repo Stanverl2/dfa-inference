@@ -4,6 +4,16 @@ from graphviz import Digraph
 
 
 class Node:
+    """
+    Represents a node in a DFA or prefix tree.
+
+    Attributes:
+        id (int): Unique identifier for the node.
+        state (int | None): Accepting (1), rejecting (0), or undecided (None) state.
+        a (Node | None): Transition on symbol 'a'.
+        b (Node | None): Transition on symbol 'b'.
+        name (str): Label for visualization (defaults to the node ID).
+    """
     ACC = 1
     REJ = 0
 
@@ -19,10 +29,23 @@ class Node:
 
 
 def render_dfa(root, path="/tmp/dfa", view=True):
-    dot = Digraph(name="DFA", format="png", engine="dot",
-                  graph_attr={"rankdir": "LR"},
-                  node_attr={"fontname": "Monospace"},
-                  edge_attr={"fontname": "Monospace"})
+    """
+    Renders a DFA starting from the given root node using Graphviz.
+
+    Accepting states are drawn with double circles.
+    Rejecting states are drawn with black fill and white text.
+    Undecided states are drawn normally.
+
+    :param root: The root node of the DFA.
+    :param path: Output path (without file extension) for the rendered image.
+    :param view: Whether to open the rendered image after generation.
+    :return: A rendering of the provided DFA.
+    """
+    dot = Digraph(
+        name="DFA", format="png", engine="dot",
+        graph_attr={"rankdir": "LR"},
+        node_attr={"fontname": "Monospace"},
+        edge_attr={"fontname": "Monospace"})
 
     visited = set()
 
@@ -36,9 +59,25 @@ def render_dfa(root, path="/tmp/dfa", view=True):
         if node.state is None:
             dot.node(node_id, label=node.name, shape="circle")
         elif node.state == Node.ACC:
-            dot.node(node_id, label=node.name, shape="circle", peripheries="2", style="filled", fillcolor="white", fontcolor="black")
+            dot.node(
+                node_id,
+                label=node.name,
+                shape="circle",
+                peripheries="2",
+                style="filled",
+                fillcolor="white",
+                fontcolor="black"
+            )
         elif node.state == Node.REJ:
-            dot.node(node_id, label=node.name, shape="circle", peripheries="2", style="filled", fillcolor="black", fontcolor="white")
+            dot.node(
+                node_id,
+                label=node.name,
+                shape="circle",
+                peripheries="2",
+                style="filled",
+                fillcolor="black",
+                fontcolor="white"
+            )
         else:
             assert False, "bad state"
 
@@ -53,6 +92,13 @@ def render_dfa(root, path="/tmp/dfa", view=True):
 
 
 def dfa_to_list(root):
+    """
+    Traverses the DFA and returns a list of all nodes, sorted by ID. Ensures that node IDs are
+    consecutive and start from 0.
+
+    :param root: The root node of the DFA.
+    :return: A list of Node instances sorted by ID.
+    """
     all_nodes = {}
 
     def visit(node):
@@ -92,8 +138,10 @@ def generate_prefix_tree(positives: set[str], negatives: set[str]) -> Node:
 
 def iterate_set(root: Node, next_node_id: int, examples: set, final_state: int) -> int:
     """
-    Helper method for creating prefix trees. The method iterates over a set of examples (either positive of negative)
-    and iteratively builds the prefix tree.
+    Helper method for creating prefix trees. The method iterates over a set of examples (either
+    positive of negative) and iteratively builds the prefix tree. Skips any word containing symbols
+    not in the alphabet {'a', 'b'}. If a word is found in both positive and negative sets, a
+    RuntimeError is raised.
 
     :param root: The staring node of the prefix tree.
     :param next_node_id: The identifier number of the next node id added to the prefix tree.
@@ -101,7 +149,14 @@ def iterate_set(root: Node, next_node_id: int, examples: set, final_state: int) 
     :param final_state: An integer determining whether it is a set of positive (1) or negative (0) examples.
     :return: An integer that represents the identifier number of the next node_id.
     """
+    alphabet = {'a', 'b'}
+
     for word in examples:
+        if not set(word).issubset(alphabet):
+            warnings.warn(f"A word ({word}) was encountered that exists of characters not inside the"
+                          f"alphabet '{'a, b'}'. This word has been ignored.", RuntimeWarning)
+            continue
+
         curr: Node = root
 
         for char in word:
@@ -126,14 +181,13 @@ def iterate_set(root: Node, next_node_id: int, examples: set, final_state: int) 
                 else:
                     curr = curr.b
             else:
-                warnings.warn(f"A {word} was encountered that exists of characters not inside the alphabet '{'a, b'}'."
-                              f"This word has been ignored.", RuntimeWarning)
-                break
-        else:
-            # This runs only if the loop didn't break (i.e., word is valid)
-            if curr.state is not None and curr.state != final_state:
-                raise RuntimeError(f"Both the positive and negative set of examples have the word '{word}' in it")
+                raise ValueError(f"A word ({word}) was encountered that exists of characters not "
+                                 f"inside the alphabet '{'a, b'}'. This word has been ignored.")
 
-            curr.state = final_state
+        # This runs only if the loop didn't break (i.e., word is valid)
+        if curr.state is not None and curr.state != final_state:
+            raise RuntimeError(f"Both the positive and negative set of examples have the word '{word}' in it")
+
+        curr.state = final_state
 
     return next_node_id
