@@ -41,11 +41,10 @@ def render_dfa(root, path="/tmp/dfa", view=True):
     :param view: Whether to open the rendered image after generation.
     :return: A rendering of the provided DFA.
     """
-    dot = Digraph(
-        name="DFA", format="png", engine="dot",
-        graph_attr={"rankdir": "LR"},
-        node_attr={"fontname": "Monospace"},
-        edge_attr={"fontname": "Monospace"})
+    dot = Digraph(name="DFA", format="png", engine="dot",
+                  graph_attr={"rankdir": "LR"},
+                  node_attr={"fontname": "Monospace"},
+                  edge_attr={"fontname": "Monospace"})
 
     visited = set()
 
@@ -184,7 +183,6 @@ def iterate_set(root: Node, next_node_id: int, examples: set, final_state: int) 
                 raise ValueError(f"A word ({word}) was encountered that exists of characters not "
                                  f"inside the alphabet '{'a, b'}'. This word has been ignored.")
 
-        # This runs only if the loop didn't break (i.e., word is valid)
         if curr.state is not None and curr.state != final_state:
             raise RuntimeError(f"Both the positive and negative set of examples have the word '{word}' in it")
 
