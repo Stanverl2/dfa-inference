@@ -133,14 +133,3 @@ def generate_dfa(n: int, a=None, f=0.31, b=0.385, s=0.2) -> list[Node]:
             add_edge(node, target, sym)
 
     return nodes
-
-
-# Example:
-nodes = generate_dfa(4, ())
-for node in nodes:
-    print("Current node:")
-    if node.id == 0:
-        render_dfa(node)
-    print(node.id)
-    print(node.a.id)
-    print(node.b.id)

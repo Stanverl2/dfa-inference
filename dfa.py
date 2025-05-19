@@ -27,6 +27,17 @@ class Node:
     def __repr__(self):
         return f"Node(id={self.id}, state={self.state})"
 
+    def accepts(self, word: str) -> bool:
+        if len(word) == 0:
+            return bool(self.state)
+
+        if word[0] == 'a' and self.a is not None:
+            return self.a.accepts(word[1:])
+        elif word[0] == 'b' and self.b is not None:
+            return self.b.accepts(word[1:])
+        else:
+            return False
+
 
 def render_dfa(root, path="/tmp/dfa", view=True):
     """
