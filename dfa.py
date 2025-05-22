@@ -127,6 +127,52 @@ def dfa_to_list(root):
     return [all_nodes[i] for i in ids]
 
 
+def _rec_conflict_check(node_a, node_b, conflict_set, visiting_set):
+    if node_a is None or node_b is None:
+        return False
+
+    id1, id2 = min(node_a.id, node_b.id), max(node_a.id, node_b.id)
+    key = (id1, id2)
+
+    if key in conflict_set:
+        return True
+
+    if key in visiting_set:
+        return False 
+
+    visiting_set.add(key)
+
+    if (node_a.state == Node.ACC and node_b.state == Node.REJ) or \
+       (node_a.state == Node.REJ and node_b.state == Node.ACC):
+        conflict_set.add(key)
+        return True
+
+    if _rec_conflict_check(node_a.a, node_b.a, conflict_set, visiting_set):
+        conflict_set.add(key)
+        return True
+
+    if _rec_conflict_check(node_a.b, node_b.b, conflict_set, visiting_set):
+        conflict_set.add(key)
+        return True
+
+    return False
+
+def calc_inequality_edges(root):
+    nodes = dfa_to_list(root)
+    N = len(nodes)
+ 
+    conflict_set = set()
+    visiting_set = set()
+
+    for i in range(N):
+        for j in range(i + 1, N):
+            node_i = nodes[i]
+            node_j = nodes[j]
+            
+            _rec_conflict_check(node_i, node_j, conflict_set, visiting_set)
+
+    return list(conflict_set)
+
 def generate_prefix_tree(positives: set[str], negatives: set[str]) -> Node:
     """
     Generates a prefix tree generated for a set of positive examples and a set of negative examples.

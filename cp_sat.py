@@ -1,6 +1,6 @@
 from ortools.sat.python import cp_model
 from collections import defaultdict
-from dfa import Node, render_dfa, dfa_to_list
+from dfa import Node, render_dfa, dfa_to_list, calc_inequality_edges
 
 # Exact DFA Identification Using SAT Solvers
 # https://www.cs.cmu.edu/~mheule/publications/DFA_ICGI.pdf
@@ -64,35 +64,65 @@ def rebuild_dfa_from_coloring(dfa_list, coloring):
         new_nodes[color] = Node(id=color, state=state, name=name)
 
     for color, nodes in groups.items():
-        sample = nodes[0]
-        if sample.a:
-            a_color = coloring[sample.a.id]
-            new_nodes[color].a = new_nodes[a_color]
-        if sample.b:
-            b_color = coloring[sample.b.id]
-            new_nodes[color].b = new_nodes[b_color]
+        a_targets = set()
+        b_targets = set()
+        for node in nodes:
+            if node.a:
+                a_targets.add(coloring[node.a.id])
+            if node.b:
+                b_targets.add(coloring[node.b.id])
+
+        assert len(a_targets) <= 1, f"inconsistent a transition in group {color}"
+        assert len(b_targets) <= 1, f"inconsistent b transition in group {color}"
+
+        if a_targets:
+            new_nodes[color].a = new_nodes[a_targets.pop()]
+        if b_targets:
+            new_nodes[color].b = new_nodes[b_targets.pop()]
 
     root_color = coloring[0]
     return new_nodes[root_color]
 
 
 if __name__ == "__main__":
+    # dfa = Node(
+    #     id=0,
+    #     a=Node(
+    #         id=1,
+    #         state=Node.REJ,
+    #         a=Node(id=2, state=Node.ACC),
+    #         b=Node(id=3, state=Node.REJ)
+    #     ),
+    #     b=Node(id=4, state=Node.ACC)
+    # )
+    # C = 2
+
     dfa = Node(
         id=0,
         a=Node(
             id=1,
-            state=Node.REJ,
-            a=Node(id=2, state=Node.ACC),
-            b=Node(id=3, state=Node.REJ)
+            state=Node.ACC,
+            b=Node(
+                id=2,
+                a=Node(
+                    id=3,
+                    a=Node(id=4, state=Node.ACC)
+                ),
+                b=Node(id=5, state=Node.REJ)
+            )
         ),
-        b=Node(id=4, state=Node.ACC)
+        b=Node(
+            id=6,
+            state=Node.REJ,
+            b=Node(id=7, state=Node.ACC)
+        )
     )
+    C = 3
 
     render_dfa(dfa, path="/tmp/original_dfa", view=True)
 
     dfa_list = dfa_to_list(dfa)
-    C = 2
-    edges = [(1, 4), (3, 4), (1, 2), (2, 3)] # TODO generate
+    edges = calc_inequality_edges(dfa)
 
     coloring = solve_dfa_sat_paper(C, dfa_list, edges)
 
