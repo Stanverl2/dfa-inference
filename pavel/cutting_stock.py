@@ -3,6 +3,10 @@ from ortools.math_opt.python import mathopt
 # https://people.orie.cornell.edu/shmoys/or630/notes-06/lec16.pdf
 # https://optimization.cbe.cornell.edu/index.php?title=Column_generation_algorithms
 
+# simplex
+# https://www.cs.cornell.edu/courses/cs6820/2017fa/handouts/splex.pdf
+# https://optimization.cbe.cornell.edu/index.php?title=Simplex_algorithm
+
 demands = [144, 105, 72, 30, 24]
 sizes   = [6.0, 13.5, 15.0, 16.5, 22.5]
 board_len  = 33.0
