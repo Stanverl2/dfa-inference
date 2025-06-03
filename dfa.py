@@ -1,6 +1,6 @@
 import warnings
 from collections import defaultdict
-from graphviz import Digraph
+from graphviz import Digraph, Graph
 
 
 class Node:
@@ -94,10 +94,23 @@ def render_dfa(root, path="/tmp/dfa", view=True):
         for sym in ("a", "b"):
             child = getattr(node, sym)
             if child:
-                dot.edge(node_id, str(child.id), label=sym, weight="2")
+                dot.edge(node_id, str(child.id), label=sym)
                 add_state(child)
 
     add_state(root)
+    dot.render(path, view=view)
+
+def render_graph(N, edge_list, path="/tmp/graph", view=True):
+    dot = Graph(name="Graph", format="png", engine="circo",
+                node_attr={"fontname": "Monospace"},
+                edge_attr={"fontname": "Monospace"})
+
+    for i in range(N):
+        dot.node(str(i), label=str(i), shape="circle")
+
+    for u, v in edge_list:
+        dot.edge(str(u), str(v))
+
     dot.render(path, view=view)
 
 def rebuild_dfa_from_coloring(dfa_list, coloring):

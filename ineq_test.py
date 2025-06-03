@@ -33,7 +33,8 @@ if __name__ == '__main__':
         )
     )
 
+    # should be 10 edges
     inequality_edges = calc_inequality_edges(dfa)
-    print("ineq edges:")
+    print(f"ineq edges (len = {len(inequality_edges)}):")
     for edge in inequality_edges:
         print(edge)
