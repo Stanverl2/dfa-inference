@@ -1,5 +1,5 @@
 import warnings
-
+from collections import defaultdict
 from graphviz import Digraph
 
 
@@ -100,6 +100,42 @@ def render_dfa(root, path="/tmp/dfa", view=True):
     add_state(root)
     dot.render(path, view=view)
 
+def rebuild_dfa_from_coloring(dfa_list, coloring):
+    groups = defaultdict(list)
+    for node in dfa_list:
+        groups[coloring[node.id]].append(node)
+
+    new_nodes = {}
+    for color, nodes in groups.items():
+        has_acc = any(n.state == Node.ACC for n in nodes)
+        has_rej = any(n.state == Node.REJ for n in nodes)
+        assert not (has_acc and has_rej), "conflict state"
+        state = Node.ACC if has_acc else Node.REJ if has_rej else None
+
+        names = sorted(n.name for n in nodes)
+        name = ",".join(names)
+
+        new_nodes[color] = Node(id=color, state=state, name=name)
+
+    for color, nodes in groups.items():
+        a_targets = set()
+        b_targets = set()
+        for node in nodes:
+            if node.a:
+                a_targets.add(coloring[node.a.id])
+            if node.b:
+                b_targets.add(coloring[node.b.id])
+
+        assert len(a_targets) <= 1, f"inconsistent a transition in group {color}"
+        assert len(b_targets) <= 1, f"inconsistent b transition in group {color}"
+
+        if a_targets:
+            new_nodes[color].a = new_nodes[a_targets.pop()]
+        if b_targets:
+            new_nodes[color].b = new_nodes[b_targets.pop()]
+
+    root_color = coloring[0]
+    return new_nodes[root_color]
 
 def dfa_to_list(root):
     """
