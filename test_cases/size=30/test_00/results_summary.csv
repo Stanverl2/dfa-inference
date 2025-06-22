@@ -1,0 +1,3 @@
+Algorithm,Time(s),ChromaticNumber
+SAT,0.638383,4
+Naive,4.335131,3

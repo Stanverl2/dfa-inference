@@ -166,9 +166,9 @@ def branch_and_price_dfa_coloring(dfa_list, conflict_edges):
         if is_integer_solution(lp_solution):
             super_col = extract_coloring_from_columns(columns, lp_solution)
             orig_col = {v: super_col[node_to_super[v]] for v in range(N)}
-            print(orig_col)
+
             violations = check_transitions(orig_col)
-            print(violations)
+
             if not violations:
                 num_colors = max(orig_col.values()) + 1
                 if num_colors < best_value:
