@@ -45,7 +45,7 @@ def save_prefix_tree(root: Node, filename: str):
 def main():
     os.makedirs("test_cases", exist_ok=True)
 
-    size = 30  # 10, 15, 20, 30, etc. (Roughly the amount od nodes)
+    size = 20  # 10, 15, 20, 30, etc. (Roughly the amount od nodes)
 
     if size == 0:
         pass

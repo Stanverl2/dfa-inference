@@ -1,0 +1,5 @@
+abb
+bab
+bbb
+bba
+aba

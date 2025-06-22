@@ -4,33 +4,53 @@ import time
 import csv
 import re
 
-from dfa import Node
+from dfa import Node, rebuild_dfa_from_coloring, render_dfa
 from misc.graph_color import naive_solve
+import os
 
 
-# STEP 1: Generate the tests with the generate_test_cases_file.
+# This line below is to set up proper rendering for debugging. At least for MacOS. Then u can include redner_DFA stuff.
+# os.environ["PATH"] += os.pathsep + "/usr/local/bin"
+
 def benchmark():
+    """
+    The outer for loop goes over folders with different sizes.
+    """
+    for test_size in range(4):
+        size = 10
+        if test_size == 1:
+            size = 15
+        if test_size == 2:
+            size = 20
+        if test_size == 3:
+            size = 30
+        summary_results = []
+        for i in range(20):
+            test_name = f"test_cases/size={size:02}/test_{i:02}"
+            print(f"running test /size={size:02}/test_{i:02}")
+            nodes_simple, edges, determinization_constraints = parse_test_file(test_name + "/consistency_graph.txt")
+            nodes_simple, edges, determinization_constraints = reindex_graph(nodes_simple, edges, determinization_constraints)
+            nodes = parse_prefix_tree(test_name+"/prefix_tree.txt")
+            # nodes also show how nodes are connected in the prefix_tree. This is needed for the detrminization constraint.
 
-    nodes_simple, edges, determinization_constraints = parse_test_file("test_cases/size=30/test_00/consistency_graph.txt")
-    nodes_simple, edges, determinization_constraints = reindex_graph(nodes_simple, edges, determinization_constraints)
-    nodes = parse_prefix_tree("test_cases/size=30/test_00/prefix_tree.txt")
-    # nodes also show how nodes are connected in the prefix_tree. This is needed for the detrminization constraint.
+            (time_spentSAT, cSAT, outputSAT) = solveSat(nodes, edges)
 
-    (time_spentSAT, cSAT, outputSAT) = solveSat(nodes, edges)
-    print(time_spentSAT)
-    (time_spentBP, cBP, outputBP) = solveBranchAndPrice(nodes, edges)
-    print(time_spentBP)
-    (time_spentNaive, cNaive , outputNaive) = solveNaive(nodes_simple, edges)
-    print(time_spentNaive)
+            (time_spentBP, cBP, outputBP) = solveBranchAndPrice(nodes, edges)
 
-    results = [
-        ("SAT", time_spentSAT, cSAT),
-        # ("BranchAndPrice", time_spentBP, cBP),
-        ("Naive", time_spentNaive, cNaive)
-    ]
+            (time_spentNaive, cNaive , outputNaive) = solveNaive(nodes_simple, edges)
 
-    write_results_to_csv("test_cases/size=30/test_00/results_summary.csv", results)
+            results = [
+                ("SAT", time_spentSAT, cSAT),
+                ("BranchAndPrice", time_spentBP, cBP),
+                ("Naive", time_spentNaive, cNaive)
+            ]
 
+            for algo, t, c in results:
+                summary_results.append((test_name, algo, t, c))
+
+            write_results_to_csv(test_name + "/results_summary.csv", results)
+
+    write_results_to_csv( "test_cases/all_results_summary.csv", summary_results, header=True)
 def solveSat(nodes, edges):
     start_time = time.time()
     low, high = 1, len(nodes)
@@ -58,8 +78,6 @@ def solveNaive(nodes, edges):
         graph = {node: [] for node in nodes}  # Initialize empty adjacency list for each node
         for a, b in edges:
             graph[a].append(b)
-            # If the graph is undirected, also add the reverse:
-            # graph[b].append(a)
         return graph
 
     graph = build_graph(nodes, edges)
@@ -70,26 +88,13 @@ def solveNaive(nodes, edges):
     return (time_spent, chromatic_number, output)
 
 
-def write_results_to_csv(filename, results):
-    with open(filename, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Algorithm", "Time(s)", "ChromaticNumber"])
-        for name, time_spent, chromatic in results:
-            writer.writerow([name, f"{time_spent:.6f}", chromatic])
-
+def write_results_to_csv(filename, results, header=False):
+    with open(filename, 'w', newline='') as f:
+        writer = csv.writer(f)
+        if header:
+            writer.writerow(["Test", "Algorithm", "Time(s)", "Chromatic Number"])
+        writer.writerows(results)
 def reindex_graph(nodes, edges, implications=None):
-    """
-    Reindexes node IDs to start at 0, and adjusts edges and implications accordingly.
-    Accepts:
-      - nodes: list of node IDs
-      - edges: list of (a, b) edges
-      - implications (optional): list of ((a1, a2), (b1, b2)) pairs
-
-    Returns:
-      - new_nodes: list of reindexed node IDs (0..n-1)
-      - new_edges: reindexed edge list
-      - new_implications: reindexed implications (if provided)
-    """
     id_map = {old_id: new_id for new_id, old_id in enumerate(sorted(nodes))}
     new_nodes = list(range(len(nodes)))
     new_edges = [(id_map[a], id_map[b]) for (a, b) in edges]
@@ -112,40 +117,50 @@ def parse_prefix_tree(filename):
     num_edges = int(lines[num_nodes + 1])
     edge_lines = lines[num_nodes + 2:]
 
-    # First pass: map old IDs to new IDs (0-based)
-    original_ids = [int(line.split()[0]) for line in node_lines]
-    id_map = {old_id: new_id for new_id, old_id in enumerate(sorted(original_ids))}
+    id_map = {}  # To reindex node IDs to start from 0
+    nodes_temp = {}
+    next_id = 0
 
-    # Second pass: create Node instances with new IDs
-    nodes = {}
-    for old_id in original_ids:
-        new_id = id_map[old_id]
-        nodes[old_id] = Node(new_id)
+    # Step 1: Parse nodes and assign states
+    for line in node_lines:
+        node_id_str, label = line.split()
+        original_id = int(node_id_str)
 
-    # Third pass: assign .a and .b to actual Node objects
+        if original_id not in id_map:
+            id_map[original_id] = next_id
+            next_id += 1
+
+        label = label.strip('"').lower()
+        if label == 'accept':
+            state = Node.ACC
+        elif label == 'reject':
+            state = Node.REJ
+        else:
+            state = None
+
+        new_id = id_map[original_id]
+        nodes_temp[original_id] = Node(id=new_id, state=state, name=f"{label}_{new_id}")
+
+    # Step 2: Parse edges and assign transitions
     for line in edge_lines:
-        from_old, to_old, label = line.split()
-        from_old = int(from_old)
-        to_old = int(to_old)
-        label = label.strip('"')
+        from_node_str, to_node_str, label = line.split()
+        from_id = int(from_node_str)
+        to_id = int(to_node_str)
+        symbol = label.strip('"')
 
-        from_node = nodes[from_old]
-        to_node = nodes[to_old]
+        from_node = nodes_temp[from_id]
+        to_node = nodes_temp[to_id]
 
-        if label == '0':
+        if symbol == '0':
             from_node.a = to_node
-        elif label == '1':
+        elif symbol == '1':
             from_node.b = to_node
         else:
-            raise ValueError(f"Unexpected label: {label}")
+            raise ValueError(f"Unexpected transition symbol: {symbol}")
 
-    # Return list of Node instances in reindexed order
-    node_list = [None] * len(nodes)
-    for old_id, node in nodes.items():
-        new_id = id_map[old_id]
-        node_list[new_id] = node
-
-    return node_list
+    # Step 3: Return reindexed nodes in sorted order
+    reindexed_nodes = sorted(nodes_temp.values(), key=lambda n: n.id)
+    return reindexed_nodes
 
 def parse_test_file(filename):
     nodes = set()
