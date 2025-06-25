@@ -238,7 +238,7 @@ class DirectedMultiGraph:
 
     def get_constraints(self, filepath: str, depth):
         self.get_inequality_constraints(filepath, depth)
-        self.get_equality_constraints(filepath)
+        # self.get_equality_constraints(filepath)
 
 
 def get_consistency_graph(prefix_tree_path, consistency_graph_path, depth):

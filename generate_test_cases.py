@@ -45,38 +45,43 @@ def save_prefix_tree(root: Node, filename: str):
 def main():
     os.makedirs("test_cases", exist_ok=True)
 
-    size = 20  # 10, 15, 20, 30, etc. (Roughly the amount od nodes)
+    size = 17  # 10, 15, 20, 30, etc. (Roughly the amount od nodes)
 
     if size == 0:
         pass
     elif size == 10:
-        n = 2
-        word_len = 3
-        num_words = 5
+        n = 3
+        word_len = 4
+        num_words = 15
     elif size == 15:
         n = 4
-        word_len = 4
-        num_words = 5
+        word_len = 6
+        num_words = 20
+    elif size == 17:
+        n = 7
+        word_len = 9
+        num_words = 20
     elif size == 20:
         n = 10
-        word_len = 4
-        num_words = 10
-    elif size == 30:
-        n = 15
-        word_len = 5
-        num_words = 10
+        word_len = 12
+        num_words = 25
+
     else:
         raise ValueError(f"Unsupported size: {size}")
 
     test_id = 0
-    max_tests = 20
+    max_tests = 4
+    s_values = [0.2, 0.2, 0.8, 0.8]
+    f_values = [0.31, 0.69, 0.31, 0.69]
 
     while test_id < max_tests:
-        dfa_nodes = generate_dfa(n=n)
+        dfa_nodes = generate_dfa(n=n, s=s_values[test_id], f=f_values[test_id])
         dfa_root = dfa_nodes[0]
         words = set()
         while len(words) < num_words:
             words.add(generate_random_word(length=word_len))
+
+        print("We added words")
 
         accepted = {w for w in words if dfa_root.accepts(w)}
         rejected = words - accepted
@@ -86,7 +91,7 @@ def main():
 
         prefix_tree_root = generate_prefix_tree(accepted, rejected)
 
-        case_dir = Path(f"test_cases/size={size}/test_{test_id:02d}")
+        case_dir = Path(f"test_cases_3/size={size}/test_{test_id:02d}")
         case_dir.mkdir(parents=True, exist_ok=True)
 
         with open(case_dir / "words.txt", "w") as f:
@@ -95,6 +100,8 @@ def main():
 
         prefix_tree_file = case_dir / "prefix_tree.txt"
         save_prefix_tree(prefix_tree_root, str(prefix_tree_file))
+
+        print("We added prefix tree")
 
         get_consistency_graph(
             prefix_tree_path=str(prefix_tree_file),
