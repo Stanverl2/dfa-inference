@@ -1,5 +1,6 @@
 from ortools.math_opt.python import mathopt
 from dfa import Node, render_dfa, dfa_to_list, calc_inequality_edges, rebuild_dfa_from_coloring
+import math, collections
 
 def apply_branch_constraints(num_nodes, base_conflicts, branch_constraints):
     parent = list(range(num_nodes))
@@ -27,6 +28,10 @@ def apply_branch_constraints(num_nodes, base_conflicts, branch_constraints):
     # Check for contradictory DIFFER after SAME merging
     for op, u, v in branch_constraints:
         if op == 'DIFFER' and find(u) == find(v):
+            return None, None, None
+        
+    for u, v in base_conflicts:
+        if find(u) == find(v):
             return None, None, None
 
     adj = [set() for _ in range(num_super)]
@@ -126,6 +131,37 @@ def extract_coloring_from_columns(columns, lp_solution):
             color_id += 1
     return coloring
 
+def propagate_same_constraints(u_id, v_id, dfa_list):
+    if u_id == v_id:
+        return []
+
+    queue = collections.deque([(u_id, v_id)])
+    processed_pairs = set()
+    all_same_constraints = []
+
+    while queue:
+        n1_id, n2_id = queue.popleft()
+
+        # Create a canonical, sorted tuple for checking if the pair was processed
+        canonical_pair = tuple(sorted((n1_id, n2_id)))
+
+        if canonical_pair in processed_pairs:
+            continue
+
+        processed_pairs.add(canonical_pair)
+        all_same_constraints.append(('SAME', n1_id, n2_id))
+
+        n1 = dfa_list[n1_id]
+        n2 = dfa_list[n2_id]
+
+        if n1.a and n2.a:
+            queue.append((n1.a.id, n2.a.id))
+
+        if n1.b and n2.b:
+            queue.append((n1.b.id, n2.b.id))
+
+    return all_same_constraints
+
 def branch_and_price_dfa_coloring(dfa_list, conflict_edges):
     N = len(dfa_list)
     base_conflicts = [tuple(sorted((u, v))) for (u, v) in conflict_edges]
@@ -158,10 +194,13 @@ def branch_and_price_dfa_coloring(dfa_list, conflict_edges):
         lp_solution, columns, lp_bound, node_to_super = solve_lp_column_generation(
             N, base_conflicts, branch_constraints
         )
-        if lp_bound >= best_value - 1e-6:
-            continue
         if lp_solution is None:
             continue
+        pruning_bound = math.ceil(lp_bound - 1e-6)
+        if pruning_bound >= best_value - 1e-6:
+            continue
+
+        # print(best_value, lp_bound, len(columns), len(branch_constraints))
 
         if is_integer_solution(lp_solution):
             super_col = extract_coloring_from_columns(columns, lp_solution)
@@ -171,37 +210,44 @@ def branch_and_price_dfa_coloring(dfa_list, conflict_edges):
 
             if not violations:
                 num_colors = max(orig_col.values()) + 1
+                # print("found", num_colors)
                 if num_colors < best_value:
                     best_value = num_colors
                     best_coloring = orig_col.copy()
                 continue
+
             i, j = violations[0]
+            # print("viol", i, j)
             # Branch DIFFER
             stack.append(branch_constraints + [('DIFFER', i, j)])
             # Branch SAME with propagation to children
-            same_branch = branch_constraints + [('SAME', i, j)]
-            ni, nj = dfa_list[i], dfa_list[j]
-            if ni.a is not None and nj.a is not None:
-                same_branch.append(('SAME', ni.a.id, nj.a.id))
-            if ni.b is not None and nj.b is not None:
-                same_branch.append(('SAME', ni.b.id, nj.b.id))
+            same_constraints_to_add = propagate_same_constraints(i, j, dfa_list)
+            same_branch = branch_constraints + same_constraints_to_add
             stack.append(same_branch)
         else:
-            u, v = pick_fractional_pair(lp_solution, columns)
+            u_super, v_super = pick_fractional_pair(lp_solution, columns)
+
+            # 2. Now, apply the "reverse trick": find original nodes that
+            #    map to these super-nodes. We only need one for each.
+            u_orig = next(orig_node for orig_node, sup_node in node_to_super.items() if sup_node == u_super)
+            v_orig = next(orig_node for orig_node, sup_node in node_to_super.items() if sup_node == v_super)
+
+            # 3. Create branches using the correctly identified ORIGINAL node IDs.
             # Branch DIFFER
-            stack.append(branch_constraints + [('DIFFER', u, v)])
-            # Branch SAME with propagation to children
-            same_branch = branch_constraints + [('SAME', u, v)]
-            nu, nv = dfa_list[u], dfa_list[v]
-            if nu.a is not None and nv.a is not None:
-                same_branch.append(('SAME', nu.a.id, nv.a.id))
-            if nu.b is not None and nv.b is not None:
-                same_branch.append(('SAME', nu.b.id, nv.b.id))
+            stack.append(branch_constraints + [('DIFFER', u_orig, v_orig)])
+            
+            # Branch SAME (with propagation)
+            same_constraints_to_add = propagate_same_constraints(u_orig, v_orig, dfa_list)
+            same_branch = branch_constraints + same_constraints_to_add
             stack.append(same_branch)
 
     return best_value, best_coloring
 
 if __name__ == "__main__":
+    # from benchmark import parse_prefix_tree
+    # dfa_l = parse_prefix_tree("./test_cases_3/size=10/test_00/prefix_tree.txt")
+    # dfa = dfa_l[0]
+    
     dfa = Node(
         id=0,
         a=Node(
@@ -222,6 +268,7 @@ if __name__ == "__main__":
             b=Node(id=7, state=Node.ACC)
         )
     )
+    
     render_dfa(dfa, path="/tmp/original_dfa", view=True)
     dfa_list = dfa_to_list(dfa)
     edges = calc_inequality_edges(dfa)
