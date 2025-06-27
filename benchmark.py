@@ -18,13 +18,9 @@ def benchmark():
     """
     summary_results = []
     for test_size in range(1):
-        size = 1
-        if test_size == 1:
-            size = 15
-        if test_size == 2: # don't run for this cause takes too long
-            size = 20
-        for i in range(5):
-            test_name = f"test_cases_3/size={size:02}/test_{i:02}"
+        size = 1  # You can change the size to correspond to the correct folder.
+        for i in range(4):  # You can change the range to run all examples in the folder.
+            test_name = f"test_cases_4/size={size:02}/test_{i:02}" # change the folder to run the correct one.
             print(f"running test /size={size:02}/test_{i:02}")
             nodes_simple, edges, determinization_constraints = parse_test_file(test_name + "/consistency_graph.txt")
             nodes_simple, edges, determinization_constraints = reindex_graph(nodes_simple, edges, determinization_constraints)
@@ -33,6 +29,7 @@ def benchmark():
             # #
             (time_spentSAT, cSAT, outputSAT) = solveSat(nodes, edges)
             print(f"Sat Time: {time_spentSAT}")
+            # Commands below can be used for debugging and checking correctness.
             # # minimized_dfa = rebuild_dfa_from_coloring(nodes, outputSAT)
             # # render_dfa(minimized_dfa, path=test_name + "/rendered_dfa_SAT", view=True)
 

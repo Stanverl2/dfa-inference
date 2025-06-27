@@ -1,4 +1,13 @@
 Test,Algorithm,Time(s),Chromatic Number
-test_cases_3/size=01/test_02,SAT,0.3997340202331543,2
-test_cases_3/size=01/test_02,BranchAndPrice,0.38837194442749023,2
-test_cases_3/size=01/test_02,Naive,0.01975083351135254,2
+test_cases_4/size=01/test_00,SAT,0.04494786262512207,2
+test_cases_4/size=01/test_00,BranchAndPrice,0.4760172367095947,2
+test_cases_4/size=01/test_00,Naive,0.025793075561523438,2
+test_cases_4/size=01/test_01,SAT,0.04059314727783203,2
+test_cases_4/size=01/test_01,BranchAndPrice,0.1390671730041504,2
+test_cases_4/size=01/test_01,Naive,0.023452043533325195,2
+test_cases_4/size=01/test_02,SAT,0.04599595069885254,2
+test_cases_4/size=01/test_02,BranchAndPrice,3.7323811054229736,2
+test_cases_4/size=01/test_02,Naive,0.03492021560668945,2
+test_cases_4/size=01/test_03,SAT,0.043557167053222656,2
+test_cases_4/size=01/test_03,BranchAndPrice,2.0175700187683105,2
+test_cases_4/size=01/test_03,Naive,0.02570176124572754,2

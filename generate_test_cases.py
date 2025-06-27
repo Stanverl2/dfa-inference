@@ -57,32 +57,32 @@ def save_prefix_tree(root: Node, filename: str):
         for from_id, to_id, symbol in edges:
             f.write(f"{from_id + 1} {to_id + 1} \"{symbol}\"\n")
 
-
+# Test cases from the report are in test_cases_3 folder
 def main():
     os.makedirs("test_cases", exist_ok=True)
 
-    size = 1  # 10, 15, 20, 30, etc. (Roughly the amount od nodes)
+    test_case = 1  # Here we just have sample test cases. Feel free to add your own with your own parameters.
 
-    if size == 0:
+    if test_case == 0:
         n = 3
         word_len = 5
         num_words = 15
-    elif size == 1:
+    elif test_case == 1:
         n = 2
         word_len = 3
         num_words = 8
-    elif size == 10:
+    elif test_case == 2:
         n = 3
         word_len = 4
         num_words = 15
-    elif size == 20:
+    elif test_case == 3:
         n = 3
         word_len = 4
         num_words = 15
 
 
     else:
-        raise ValueError(f"Unsupported size: {size}")
+        raise ValueError(f"Unsupported size: {test_case}")
 
     test_id = 0
     max_tests = 5
@@ -100,11 +100,8 @@ def main():
         dfa_nodes = generate_dfa(n=n, s=s_values[test_id], f=f_values[test_id], b=b_values[test_id])
         dfa_root = dfa_nodes[0]
         words = set()
-        print("We generated a dfa")
         while len(words) < num_words:
             words.add(generate_random_word(length=word_len))
-
-        print("We added words")
 
         accepted = {w for w in words if dfa_root.accepts(w)}
         rejected = words - accepted
@@ -114,7 +111,7 @@ def main():
 
         prefix_tree_root = generate_prefix_tree(accepted, rejected)
 
-        case_dir = Path(f"test_cases_3/size={size}/test_{test_id:02d}")
+        case_dir = Path(f"test_cases_4/size={test_case:02d}/test_{test_id:02d}")
         case_dir.mkdir(parents=True, exist_ok=True)
 
         with open(case_dir / "words.txt", "w") as f:
@@ -124,14 +121,13 @@ def main():
         prefix_tree_file = case_dir / "prefix_tree.txt"
         save_prefix_tree(prefix_tree_root, str(prefix_tree_file))
 
-        print("We added prefix tree")
 
         get_consistency_graph(
             prefix_tree_path=str(prefix_tree_file),
             consistency_graph_path=str(case_dir / "consistency_graph.txt"),
             depth=4000
         )
-        print(f"Test case {test_id} completed with size={size}, n={n}, word_len={word_len}")
+        print(f"Test case {test_id} completed with size={test_case}, n={n}, word_len={word_len}")
         test_id += 1
 
 
