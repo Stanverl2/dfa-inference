@@ -1,0 +1,4 @@
+Test,Algorithm,Time(s),Chromatic Number
+test_cases_3/size=01/test_02,SAT,0.3997340202331543,2
+test_cases_3/size=01/test_02,BranchAndPrice,0.38837194442749023,2
+test_cases_3/size=01/test_02,Naive,0.01975083351135254,2

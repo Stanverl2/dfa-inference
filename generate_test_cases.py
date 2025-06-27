@@ -13,6 +13,22 @@ def generate_random_word(length=5, alphabet=None) -> str:
     return ''.join(np.array(alphabet)[np.random.randint(0, len(alphabet), size=length)])
 
 
+def generate_random_word_of_varying_length(max_length=5, alphabet=None) -> str:
+    if alphabet is None:
+        alphabet = ['a', 'b']
+
+    # Bias toward longer words using a truncated geometric-like distribution
+    lengths = np.arange(1, max_length + 1)
+    probs = np.linspace(1, max_length, max_length)
+    probs = probs / probs.sum()  # Normalize to get probabilities
+    # Increase weight for longer lengths
+    probs = probs ** 2
+    probs /= probs.sum()
+
+    actual_length = np.random.choice(lengths, p=probs)
+    return ''.join(np.random.choice(alphabet, size=actual_length))
+
+
 def save_prefix_tree(root: Node, filename: str):
     visited = {}
     edges = []
@@ -45,39 +61,46 @@ def save_prefix_tree(root: Node, filename: str):
 def main():
     os.makedirs("test_cases", exist_ok=True)
 
-    size = 17  # 10, 15, 20, 30, etc. (Roughly the amount od nodes)
+    size = 1  # 10, 15, 20, 30, etc. (Roughly the amount od nodes)
 
     if size == 0:
-        pass
+        n = 3
+        word_len = 5
+        num_words = 15
+    elif size == 1:
+        n = 2
+        word_len = 3
+        num_words = 8
     elif size == 10:
         n = 3
         word_len = 4
         num_words = 15
-    elif size == 15:
-        n = 4
-        word_len = 6
-        num_words = 20
-    elif size == 17:
-        n = 7
-        word_len = 9
-        num_words = 20
     elif size == 20:
-        n = 10
-        word_len = 12
-        num_words = 25
+        n = 3
+        word_len = 4
+        num_words = 15
+
 
     else:
         raise ValueError(f"Unsupported size: {size}")
 
     test_id = 0
-    max_tests = 4
-    s_values = [0.2, 0.2, 0.8, 0.8]
-    f_values = [0.31, 0.69, 0.31, 0.69]
+    max_tests = 5
+    # test cases:
+    # high f, low b, low s = deep trees
+    # low f, high b, low s  = dense graph
+    # low f, high b, high s  = dense and cyclic graph
+    # high f, low b, and hig s = deep structure but a lot of self loops
+    # low f, low b, low s = sparse, not a lot of transitions.
+    f_values = [0.69, 0.31, 0.31, 0.69, 0.31]
+    b_values = [0.385, 0.615, 0.615, 0.385, 0.385]
+    s_values = [0.2, 0.2, 0.8, 0.8, 0.2]
 
     while test_id < max_tests:
-        dfa_nodes = generate_dfa(n=n, s=s_values[test_id], f=f_values[test_id])
+        dfa_nodes = generate_dfa(n=n, s=s_values[test_id], f=f_values[test_id], b=b_values[test_id])
         dfa_root = dfa_nodes[0]
         words = set()
+        print("We generated a dfa")
         while len(words) < num_words:
             words.add(generate_random_word(length=word_len))
 

@@ -17,33 +17,33 @@ def benchmark():
     The outer for loop goes over folders with different sizes.
     """
     summary_results = []
-    for test_size in range(2):
-        size = 10
+    for test_size in range(1):
+        size = 1
         if test_size == 1:
             size = 15
         if test_size == 2: # don't run for this cause takes too long
             size = 20
-        for i in range(4):
+        for i in range(5):
             test_name = f"test_cases_3/size={size:02}/test_{i:02}"
             print(f"running test /size={size:02}/test_{i:02}")
             nodes_simple, edges, determinization_constraints = parse_test_file(test_name + "/consistency_graph.txt")
             nodes_simple, edges, determinization_constraints = reindex_graph(nodes_simple, edges, determinization_constraints)
             nodes = parse_prefix_tree(test_name+"/prefix_tree.txt")
             # nodes also show how nodes are connected in the prefix_tree. This is needed for the detrminization constraint.
-            #
+            # #
             (time_spentSAT, cSAT, outputSAT) = solveSat(nodes, edges)
             print(f"Sat Time: {time_spentSAT}")
-            # minimized_dfa = rebuild_dfa_from_coloring(nodes, outputSAT)
-            # render_dfa(minimized_dfa, path=test_name + "/rendered_dfa_SAT", view=True)
+            # # minimized_dfa = rebuild_dfa_from_coloring(nodes, outputSAT)
+            # # render_dfa(minimized_dfa, path=test_name + "/rendered_dfa_SAT", view=True)
 
             (time_spentBP, cBP, outputBP) = solveBranchAndPrice(nodes, edges)
             print(f"BP time: {time_spentBP}")
 
-
+            #
             (time_spentNaive, cNaive , outputNaive) = solveNaive(nodes_simple, edges)
             print(f"Naive Time: {time_spentNaive}")
-            # minimized_dfa = rebuild_dfa_from_coloring(nodes, outputNaive)
-            # render_dfa(minimized_dfa, path=test_name+"/rendered_dfa_NAIVE", view=True)
+            # # minimized_dfa = rebuild_dfa_from_coloring(nodes, outputNaive)
+            # # render_dfa(minimized_dfa, path=test_name+"/rendered_dfa_NAIVE", view=True)
 
             results = [
                 ("SAT", time_spentSAT, cSAT),
